@@ -84,7 +84,6 @@ public class MainActivity extends Activity implements SensorEventListener{
             double newZ = aveZ / noReads;
             double threshold = 0.5;
             String direction = "";
-            String readValues = "";
 
             double deltaX = x - newX;
             double deltaY = y - newY;
@@ -92,29 +91,29 @@ public class MainActivity extends Activity implements SensorEventListener{
 
             x = newX; y = newY; z = newZ;
 
+            int moveForward, moveRight;
+
             if (deltaX > threshold) {
                 direction += "Right ";
-                readValues += "right 1 ";
+                moveRight = 1;
             }
-            else readValues += "right 0";
+            else moveRight = 0;
 
             if (deltaX < -threshold) {
                 direction += "Left ";
-                readValues += "left 1 ";
+                moveRight = -1;
             }
-            else readValues += "left 0 ";
 
-            if (deltaY > threshold) {
+            if (deltaZ > threshold) {
                 direction += "Forward ";
-                readValues += "forward 1 ";
+                moveForward = 1;
             }
-            else readValues += "forward 0";
+            else moveForward = 0;
 
-            if (deltaY < -threshold) {
+            if (deltaZ < -threshold) {
                 direction += "Back ";
-                readValues += "back 1";
+                moveForward = -1;
             }
-            else readValues += "back 0";
 
             if (Math.abs(deltaX) < threshold && Math.abs(deltaY) < threshold)
                 direction = "No movement";
@@ -123,14 +122,30 @@ public class MainActivity extends Activity implements SensorEventListener{
             yText.setText("Y: " + String.format("%.2f", y));
             zText.setText("Z: " + String.format("%.2f", z));
             directionText.setText("Direction: " + direction);
+            exceptionText.setText(moveForward + " " + moveRight);
 
             aveX = 0; aveY = 0; aveZ = 0;
             noReads = 0;
             currentTime = newTime;
 
             try {
-                String path = "https://api.particle.io/v1/devices/2d0047001047343339383037/Stop?access_token=d2e16d62d96dc77cde4e77ce31950e9a6650541d";
-                exceptionText.setText("Here:" + makeRequest(path, "1"));
+                String path = null;
+                /*if (moveForward == 0 && moveRight == 0)
+                    path = "/v1/devices/2d0047001047343339383037/Stop?access_token=d2e16d62d96dc77cde4e77ce31950e9a6650541d";
+
+                if (moveForward == 1)
+                    path = "/v1/devices/2d0047001047343339383037/Forward?access_token=d2e16d62d96dc77cde4e77ce31950e9a6650541d";
+
+                if (moveForward == -1)
+                    path = "https://api.particle.io/v1/devices/2d0047001047343339383037/Back?access_token=d2e16d62d96dc77cde4e77ce31950e9a6650541d";
+
+                if (moveRight == 1)
+                    path = "https://api.particle.io/v1/devices/2d0047001047343339383037/Right?access_token=d2e16d62d96dc77cde4e77ce31950e9a6650541d";
+
+                if (moveRight == -1)
+                    path = "https://api.particle.io/v1/devices/2d0047001047343339383037/Left?access_token=d2e16d62d96dc77cde4e77ce31950e9a6650541d";
+                */
+                makeRequest(path);
             }
             catch (Exception exception) {
                 //exceptionText.setText("Here:" + exception.getMessage());
@@ -142,62 +157,41 @@ public class MainActivity extends Activity implements SensorEventListener{
 
     }
 
-    public String makeRequest(String path, String params) throws Exception {
+    public String makeRequest(String path) throws Exception {
 
         RestAdapter retrofit = new RestAdapter.Builder()
-                .setEndpoint("https://google.com/")
+                .setEndpoint("https://api.particle.io")
                 .build();
 
 
         Microcontroller micro = retrofit.create(Microcontroller.class);
         directionText.setText("first");
 
-        micro.sendCommand(
-
-                //Passing the values by getting it from editTexts
+        micro.forward(
                 "1",
-
-                //Creating an anonymous callback
                 new Callback<Response>() {
                     @Override
                     public void success(Response result, Response response) {
-                        //On success we will read the server's output using bufferedreader
-                        //Creating a bufferedreader object
                         BufferedReader reader = null;
-
-                        //An string to store output from the server
                         String output = "";
 
                         try {
-                            //Initializing buffered reader
                             reader = new BufferedReader(new InputStreamReader(result.getBody().in()));
-
-                            //Reading the output in the string
                             output = reader.readLine();
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
 
-                        //Displaying the output as a toast
                         Toast.makeText(MainActivity.this, output, Toast.LENGTH_LONG).show();
                     }
 
-
-
                     @Override
                     public void failure(RetrofitError error) {
-                        //If any error occured displaying the error as toast
                         Toast.makeText(MainActivity.this, error.toString(),Toast.LENGTH_LONG).show();
                     }
                 }
         );
 
-
-        /*Call<ResponseBody> response = micro.getGoogle();
-        response.execute();
-
-        directionText.setText("second");
-        return response.toString();*/
         return "Here I got";
     }
 
