@@ -30,9 +30,10 @@ public class MainActivity extends Activity implements SensorEventListener{
     private Sensor mySensor;
     private SensorManager SM;
     private double x, y, z;
-    private long currentTime, timeThreshold;
+    private long oldTime, timeThreshold;
     private double aveX, aveY, aveZ;
     private int noReads;
+    private double oldVelocityX, oldVelocityZ;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,10 +57,11 @@ public class MainActivity extends Activity implements SensorEventListener{
         exceptionText = (TextView)findViewById(R.id.exceptionText);
 
         x = 0; y = 0; z = 0;
-        currentTime = System.currentTimeMillis();
+        oldTime = System.currentTimeMillis();
         timeThreshold = 500;
         aveX = 0; aveY = 0; aveZ = 0;
         noReads = 0;
+        oldVelocityX = 0; oldVelocityZ = 0;
     }
 
     @Override
@@ -71,7 +73,7 @@ public class MainActivity extends Activity implements SensorEventListener{
     public void onSensorChanged(SensorEvent event) {
         long newTime = System.currentTimeMillis();
 
-        if (newTime - currentTime < timeThreshold){
+        if (newTime - oldTime < timeThreshold){
             aveX += event.values[0];
             aveY += event.values[1];
             aveZ += event.values[2];
@@ -82,35 +84,41 @@ public class MainActivity extends Activity implements SensorEventListener{
             double newX = aveX / noReads;
             double newY = aveY / noReads;
             double newZ = aveZ / noReads;
-            double threshold = 0.5;
+
+            double threshold = 0.1;
+            double referenceForward = 0.5;
+            double referenceRight = 0.5;
             String direction = "";
 
             double deltaX = x - newX;
             double deltaY = y - newY;
             double deltaZ = z - newZ;
 
+            double newVelocityX = oldVelocityX + x * (newTime - oldTime) / 1000;
+            double newVelocityZ = oldVelocityZ + z * (newTime - oldTime) / 1000;
+
             x = newX; y = newY; z = newZ;
 
             int moveForward, moveRight;
 
-            if (deltaX > threshold) {
+            if (newVelocityX > referenceRight + threshold) {
                 direction += "Right ";
                 moveRight = 1;
             }
             else moveRight = 0;
 
-            if (deltaX < -threshold) {
+            if (newVelocityX < referenceForward - threshold) {
                 direction += "Left ";
                 moveRight = -1;
             }
 
-            if (deltaZ > threshold) {
+            if (newVelocityZ < referenceForward + threshold) {
                 direction += "Forward ";
                 moveForward = 1;
             }
             else moveForward = 0;
 
-            if (deltaZ < -threshold) {
+            if (newVelocityZ > referenceForward - threshold) {
                 direction += "Back ";
                 moveForward = -1;
             }
@@ -122,30 +130,17 @@ public class MainActivity extends Activity implements SensorEventListener{
             yText.setText("Y: " + String.format("%.2f", y));
             zText.setText("Z: " + String.format("%.2f", z));
             directionText.setText("Direction: " + direction);
-            exceptionText.setText(moveForward + " " + moveRight);
+            exceptionText.setText("Forward: " + newVelocityZ + " Right: " + newVelocityX);
 
             aveX = 0; aveY = 0; aveZ = 0;
             noReads = 0;
-            currentTime = newTime;
+            oldTime = newTime;
+
+            oldVelocityX = newVelocityX;
+            oldVelocityZ = newVelocityZ;
 
             try {
-                String path = null;
-                /*if (moveForward == 0 && moveRight == 0)
-                    path = "/v1/devices/2d0047001047343339383037/Stop?access_token=d2e16d62d96dc77cde4e77ce31950e9a6650541d";
-
-                if (moveForward == 1)
-                    path = "/v1/devices/2d0047001047343339383037/Forward?access_token=d2e16d62d96dc77cde4e77ce31950e9a6650541d";
-
-                if (moveForward == -1)
-                    path = "https://api.particle.io/v1/devices/2d0047001047343339383037/Back?access_token=d2e16d62d96dc77cde4e77ce31950e9a6650541d";
-
-                if (moveRight == 1)
-                    path = "https://api.particle.io/v1/devices/2d0047001047343339383037/Right?access_token=d2e16d62d96dc77cde4e77ce31950e9a6650541d";
-
-                if (moveRight == -1)
-                    path = "https://api.particle.io/v1/devices/2d0047001047343339383037/Left?access_token=d2e16d62d96dc77cde4e77ce31950e9a6650541d";
-                */
-                makeRequest(path);
+                makeRequest(moveForward, moveRight);
             }
             catch (Exception exception) {
                 //exceptionText.setText("Here:" + exception.getMessage());
@@ -157,40 +152,148 @@ public class MainActivity extends Activity implements SensorEventListener{
 
     }
 
-    public String makeRequest(String path) throws Exception {
+    public String makeRequest(int moveForward, int moveRight) throws Exception {
 
         RestAdapter retrofit = new RestAdapter.Builder()
                 .setEndpoint("https://api.particle.io")
                 .build();
 
-
         Microcontroller micro = retrofit.create(Microcontroller.class);
-        directionText.setText("first");
 
-        micro.forward(
-                "1",
-                new Callback<Response>() {
-                    @Override
-                    public void success(Response result, Response response) {
-                        BufferedReader reader = null;
-                        String output = "";
+        if (moveForward == 0 && moveRight == 0)
+            micro.stop(
+                    "1",
+                    new Callback<Response>() {
+                        @Override
+                        public void success(Response result, Response response) {
+                            BufferedReader reader = null;
+                            String output = "";
 
-                        try {
-                            reader = new BufferedReader(new InputStreamReader(result.getBody().in()));
-                            output = reader.readLine();
-                        } catch (IOException e) {
-                            e.printStackTrace();
+                            try {
+                                reader = new BufferedReader(new InputStreamReader(result.getBody().in()));
+                                output = reader.readLine();
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+
+                            Toast.makeText(MainActivity.this, output, Toast.LENGTH_LONG).show();
                         }
 
-                        Toast.makeText(MainActivity.this, output, Toast.LENGTH_LONG).show();
+                        @Override
+                        public void failure(RetrofitError error) {
+                            Toast.makeText(MainActivity.this, error.toString(), Toast.LENGTH_LONG).show();
+                        }
                     }
+            );
 
-                    @Override
-                    public void failure(RetrofitError error) {
-                        Toast.makeText(MainActivity.this, error.toString(),Toast.LENGTH_LONG).show();
+
+        if (moveForward == 1)
+            micro.forward (
+                    "1",
+                    new Callback<Response>() {
+                        @Override
+                        public void success(Response result, Response response) {
+                            BufferedReader reader = null;
+                            String output = "";
+
+                            try {
+                                reader = new BufferedReader(new InputStreamReader(result.getBody().in()));
+                                output = reader.readLine();
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+
+                            Toast.makeText(MainActivity.this, output, Toast.LENGTH_LONG).show();
+                        }
+
+                        @Override
+                        public void failure(RetrofitError error) {
+                            Toast.makeText(MainActivity.this, error.toString(),Toast.LENGTH_LONG).show();
+                        }
                     }
-                }
-        );
+            );
+
+
+        if (moveForward == -1)
+            micro.back (
+                    "1",
+                    new Callback<Response>() {
+                        @Override
+                        public void success(Response result, Response response) {
+                            BufferedReader reader = null;
+                            String output = "";
+
+                            try {
+                                reader = new BufferedReader(new InputStreamReader(result.getBody().in()));
+                                output = reader.readLine();
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+
+                            Toast.makeText(MainActivity.this, output, Toast.LENGTH_LONG).show();
+                        }
+
+                        @Override
+                        public void failure(RetrofitError error) {
+                            Toast.makeText(MainActivity.this, error.toString(),Toast.LENGTH_LONG).show();
+                        }
+                    }
+            );
+
+
+        if (moveRight == 1)
+            micro.right (
+                    "1",
+                    new Callback<Response>() {
+                        @Override
+                        public void success(Response result, Response response) {
+                            BufferedReader reader = null;
+                            String output = "";
+
+                            try {
+                                reader = new BufferedReader(new InputStreamReader(result.getBody().in()));
+                                output = reader.readLine();
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+
+                            Toast.makeText(MainActivity.this, output, Toast.LENGTH_LONG).show();
+                        }
+
+                        @Override
+                        public void failure(RetrofitError error) {
+                            Toast.makeText(MainActivity.this, error.toString(),Toast.LENGTH_LONG).show();
+                        }
+                    }
+            );
+
+
+        if (moveRight == -1)
+            micro.left (
+                    "1",
+                    new Callback<Response>() {
+                        @Override
+                        public void success(Response result, Response response) {
+                            BufferedReader reader = null;
+                            String output = "";
+
+                            try {
+                                reader = new BufferedReader(new InputStreamReader(result.getBody().in()));
+                                output = reader.readLine();
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+
+                            Toast.makeText(MainActivity.this, output, Toast.LENGTH_LONG).show();
+                        }
+
+                        @Override
+                        public void failure(RetrofitError error) {
+                            Toast.makeText(MainActivity.this, error.toString(),Toast.LENGTH_LONG).show();
+                        }
+                    }
+            );
+
 
         return "Here I got";
     }

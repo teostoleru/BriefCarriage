@@ -8,33 +8,44 @@ import retrofit.*;
 
 public interface Microcontroller {
     @FormUrlEncoded
-    /*@POST("/v1/devices/2d0047001047343339383037/Stop?access_token=d2e16d62d96dc77cde4e77ce31950e9a6650541d")
+    @POST("/v1/devices/2d0047001047343339383037/Stop?access_token=d2e16d62d96dc77cde4e77ce31950e9a6650541d")
     public void stop (
             @Field("arg") String arg,
             Callback<Response> callback
-    );*/
+    );
 
+    @FormUrlEncoded
     @POST("/v1/devices/2d0047001047343339383037/Forward?access_token=d2e16d62d96dc77cde4e77ce31950e9a6650541d")
     public void forward (
             @Field("arg") String arg,
             Callback<Response> callback
     );
 
-    /*@POST("/v1/devices/2d0047001047343339383037/Back?access_token=d2e16d62d96dc77cde4e77ce31950e9a6650541d")
+    @FormUrlEncoded
+    @POST("/v1/devices/2d0047001047343339383037/Back?access_token=d2e16d62d96dc77cde4e77ce31950e9a6650541d")
     public void back (
             @Field("arg") String arg,
             Callback<Response> callback
     );
 
+    @FormUrlEncoded
     @POST("/v1/devices/2d0047001047343339383037/Right?access_token=d2e16d62d96dc77cde4e77ce31950e9a6650541d")
     public void right (
             @Field("arg") String arg,
             Callback<Response> callback
     );
 
+    @FormUrlEncoded
     @POST("/v1/devices/2d0047001047343339383037/Left?access_token=d2e16d62d96dc77cde4e77ce31950e9a6650541d")
-    public void Left (
+    public void left (
             @Field("arg") String arg,
             Callback<Response> callback
-    );*/
+    );
+
+    @FormUrlEncoded
+    @POST("/v1/devices/2d0047001047343339383037/Alarm?access_token=d2e16d62d96dc77cde4e77ce31950e9a6650541d")
+    public void alarm (
+            @Field("arg") String arg,
+            Callback<Response> callback
+    );
 }
