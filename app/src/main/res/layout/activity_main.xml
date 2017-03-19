@@ -55,10 +55,10 @@
         android:layout_alignEnd="@+id/directionText" />
 
     <Button
-        android:id="@+id/alarmButton"
+        android:id="@+id/enableButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Alarm"
+        android:text="Enable"
         android:textAppearance="?android:attr/textAppearanceLarge"
         android:layout_marginTop="27dp"
         android:layout_below="@+id/exceptionText"

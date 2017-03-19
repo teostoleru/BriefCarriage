@@ -29,11 +29,11 @@ import retrofit.client.Response;
 public class MainActivity extends Activity implements SensorEventListener, View.OnClickListener{
 
     private TextView xText, yText, zText, directionText, exceptionText;
-    private Button alarmButton;
+    private Button enableButton;
     private Sensor mySensor;
     private SensorManager SM;
     private double x, y, z;
-    private boolean alarmOn;
+    private boolean enableOn;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,9 +52,9 @@ public class MainActivity extends Activity implements SensorEventListener, View.
         directionText = (TextView)findViewById(R.id.directionText);
         exceptionText = (TextView)findViewById(R.id.exceptionText);
 
-        alarmButton = (Button)findViewById(R.id.alarmButton);
-        alarmButton.setOnClickListener(this);
-        alarmOn = false;
+        enableButton = (Button)findViewById(R.id.enableButton);
+        enableButton.setOnClickListener(this);
+        enableOn = false;
 
         x = 0; y = 0; z = 0;
     }
@@ -90,13 +90,13 @@ public class MainActivity extends Activity implements SensorEventListener, View.
             moveRight = -1;
         }
 
-        if (z > referenceForward + threshold) {
+        if (y > referenceForward + threshold) {
             direction += "Forward ";
             moveForward = 1;
         }
         else moveForward = 0;
 
-        if (z < referenceForward - threshold / 2) {
+        if (y < referenceForward - threshold) {
             direction += "Back ";
             moveForward = -1;
         }
@@ -108,7 +108,10 @@ public class MainActivity extends Activity implements SensorEventListener, View.
         yText.setText("Y: " + String.format("%.2f", y));
         zText.setText("Z: " + String.format("%.2f", z));
         directionText.setText("Direction: " + direction);
-        exceptionText.setText("Alarm is: " + alarmOn);
+        if (enableOn)
+            exceptionText.setText("Control is activated");
+        else
+            exceptionText.setText("Control is off");
 
         try {
             makeRequest(moveForward, moveRight);
@@ -120,8 +123,8 @@ public class MainActivity extends Activity implements SensorEventListener, View.
 
     public void onClick(View v)
     {
-        if (v == alarmButton) {
-            alarmOn = !alarmOn;
+        if (v == enableButton) {
+            enableOn = !enableOn;
         }
     }
 
@@ -133,8 +136,8 @@ public class MainActivity extends Activity implements SensorEventListener, View.
 
         Microcontroller micro = retrofit.create(Microcontroller.class);
 
-        if (alarmOn) {
-            micro.alarm(
+        if (moveForward == 0 && moveRight == 0 || !enableOn)
+            micro.stop(
                     "1",
                     new Callback<Response>() {
                         @Override
@@ -158,10 +161,10 @@ public class MainActivity extends Activity implements SensorEventListener, View.
                         }
                     }
             );
-        }
-        else {
-            if (moveForward == 0 && moveRight == 0)
-                micro.stop(
+
+        if (enableOn) {
+            if (moveForward == 1)
+                micro.forward(
                         "1",
                         new Callback<Response>() {
                             @Override
@@ -187,35 +190,8 @@ public class MainActivity extends Activity implements SensorEventListener, View.
                 );
 
 
-            if (moveForward == 1)
-                micro.forward (
-                        "1",
-                        new Callback<Response>() {
-                            @Override
-                            public void success(Response result, Response response) {
-                                BufferedReader reader = null;
-                                String output = "";
-
-                                try {
-                                    reader = new BufferedReader(new InputStreamReader(result.getBody().in()));
-                                    output = reader.readLine();
-                                } catch (IOException e) {
-                                    e.printStackTrace();
-                                }
-
-                                Toast.makeText(MainActivity.this, output, Toast.LENGTH_LONG).show();
-                            }
-
-                            @Override
-                            public void failure(RetrofitError error) {
-                                Toast.makeText(MainActivity.this, error.toString(),Toast.LENGTH_LONG).show();
-                            }
-                        }
-                );
-
-
             if (moveForward == -1)
-                micro.back (
+                micro.back(
                         "1",
                         new Callback<Response>() {
                             @Override
@@ -235,14 +211,14 @@ public class MainActivity extends Activity implements SensorEventListener, View.
 
                             @Override
                             public void failure(RetrofitError error) {
-                                Toast.makeText(MainActivity.this, error.toString(),Toast.LENGTH_LONG).show();
+                                Toast.makeText(MainActivity.this, error.toString(), Toast.LENGTH_LONG).show();
                             }
                         }
                 );
 
 
             if (moveRight == 1)
-                micro.right (
+                micro.right(
                         "1",
                         new Callback<Response>() {
                             @Override
@@ -262,14 +238,14 @@ public class MainActivity extends Activity implements SensorEventListener, View.
 
                             @Override
                             public void failure(RetrofitError error) {
-                                Toast.makeText(MainActivity.this, error.toString(),Toast.LENGTH_LONG).show();
+                                Toast.makeText(MainActivity.this, error.toString(), Toast.LENGTH_LONG).show();
                             }
                         }
                 );
 
 
             if (moveRight == -1)
-                micro.left (
+                micro.left(
                         "1",
                         new Callback<Response>() {
                             @Override
@@ -289,12 +265,11 @@ public class MainActivity extends Activity implements SensorEventListener, View.
 
                             @Override
                             public void failure(RetrofitError error) {
-                                Toast.makeText(MainActivity.this, error.toString(),Toast.LENGTH_LONG).show();
+                                Toast.makeText(MainActivity.this, error.toString(), Toast.LENGTH_LONG).show();
                             }
                         }
                 );
         }
-
         return "Here I got";
     }
 
