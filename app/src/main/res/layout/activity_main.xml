@@ -41,9 +41,8 @@
         android:layout_height="wrap_content"
         android:text="Direction"
         android:textAppearance="?android:attr/textAppearanceLarge"
-        android:layout_below="@+id/zText"
-        android:layout_alignEnd="@+id/zText"
-        android:layout_marginTop="85dp" />
+        android:layout_centerVertical="true"
+        android:layout_alignEnd="@+id/zText" />
 
     <TextView
         android:id="@+id/exceptionText"
@@ -51,7 +50,18 @@
         android:layout_height="wrap_content"
         android:text="Exception"
         android:textAppearance="?android:attr/textAppearanceLarge"
+        android:layout_marginTop="18dp"
         android:layout_below="@+id/directionText"
-        android:layout_alignEnd="@+id/directionText"
-        android:layout_marginTop="85dp" />
+        android:layout_alignEnd="@+id/directionText" />
+
+    <Button
+        android:id="@+id/alarmButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Alarm"
+        android:textAppearance="?android:attr/textAppearanceLarge"
+        android:layout_marginTop="27dp"
+        android:layout_below="@+id/exceptionText"
+        android:layout_centerHorizontal="true" />
+
 </RelativeLayout>

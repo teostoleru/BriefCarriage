@@ -8,6 +8,8 @@ import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -24,31 +26,25 @@ import retrofit.RetrofitError;
 import retrofit.client.Response;
 
 
-public class MainActivity extends Activity implements SensorEventListener{
+public class MainActivity extends Activity implements SensorEventListener, View.OnClickListener{
 
     private TextView xText, yText, zText, directionText, exceptionText;
+    private Button alarmButton;
     private Sensor mySensor;
     private SensorManager SM;
     private double x, y, z;
-    private long oldTime, timeThreshold;
-    private double aveX, aveY, aveZ;
-    private int noReads;
-    private double oldVelocityX, oldVelocityZ;
+    private boolean alarmOn;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
         // Create our Sensor Manager
         SM = (SensorManager)getSystemService(SENSOR_SERVICE);
-
         // Accelerometer Sensor
         mySensor = SM.getDefaultSensor(Sensor.TYPE_GRAVITY);
-
         // Register sensor Listener
         SM.registerListener(this, mySensor, SensorManager.SENSOR_DELAY_NORMAL);
-
         // Assign TextView
         xText = (TextView)findViewById(R.id.xText);
         yText = (TextView)findViewById(R.id.yText);
@@ -56,12 +52,11 @@ public class MainActivity extends Activity implements SensorEventListener{
         directionText = (TextView)findViewById(R.id.directionText);
         exceptionText = (TextView)findViewById(R.id.exceptionText);
 
+        alarmButton = (Button)findViewById(R.id.alarmButton);
+        alarmButton.setOnClickListener(this);
+        alarmOn = false;
+
         x = 0; y = 0; z = 0;
-        oldTime = System.currentTimeMillis();
-        timeThreshold = 500;
-        aveX = 0; aveY = 0; aveZ = 0;
-        noReads = 0;
-        oldVelocityX = 0; oldVelocityZ = 0;
     }
 
     @Override
@@ -71,79 +66,63 @@ public class MainActivity extends Activity implements SensorEventListener{
 
     @Override
     public void onSensorChanged(SensorEvent event) {
-        long newTime = System.currentTimeMillis();
+        double newX = event.values[0];
+        double newY = event.values[1];
+        double newZ = event.values[2];
 
-        /*if (newTime - oldTime < timeThreshold){
-            aveX += event.values[0];
-            aveY += event.values[1];
-            aveZ += event.values[2];
-            noReads++;
+        double threshold = 3.0;
+        double referenceForward = 0.0;
+        double referenceRight = 0.0;
+        String direction = "";
+
+        x = newX; y = newY; z = newZ;
+
+        int moveForward, moveRight;
+
+        if (x < referenceRight - threshold) {
+            direction += "Right ";
+            moveRight = 1;
+        }
+        else moveRight = 0;
+
+        if (x > referenceRight + threshold) {
+            direction += "Left ";
+            moveRight = -1;
         }
 
-        else {*/
-            double newX = event.values[0];
-            double newY = event.values[1];
-            double newZ = event.values[2];
+        if (z > referenceForward + threshold) {
+            direction += "Forward ";
+            moveForward = 1;
+        }
+        else moveForward = 0;
 
-            double threshold = 3.0;
-            double referenceForward = 0.0;
-            double referenceRight = 0.0;
-            String direction = "";
+        if (z < referenceForward - threshold / 2) {
+            direction += "Back ";
+            moveForward = -1;
+        }
 
-            double deltaX = x - newX;
-            double deltaY = y - newY;
-            double deltaZ = z - newZ;
+        if (moveForward == 0 && moveRight == 0)
+            direction = "No movement";
 
-            x = newX; y = newY; z = newZ;
+        xText.setText("X: " + String.format("%.2f", x));
+        yText.setText("Y: " + String.format("%.2f", y));
+        zText.setText("Z: " + String.format("%.2f", z));
+        directionText.setText("Direction: " + direction);
+        exceptionText.setText("Alarm is: " + alarmOn);
 
-            int moveForward, moveRight;
-
-            if (x < referenceRight - threshold) {
-                direction += "Right ";
-                moveRight = 1;
-            }
-            else moveRight = 0;
-
-            if (x > referenceRight + threshold) {
-                direction += "Left ";
-                moveRight = -1;
-            }
-
-            if (z > referenceForward + threshold) {
-                direction += "Forward ";
-                moveForward = 1;
-            }
-            else moveForward = 0;
-
-            if (z < referenceForward - threshold) {
-                direction += "Back ";
-                moveForward = -1;
-            }
-
-            if (moveForward == 0 && moveRight == 0)
-                direction = "No movement";
-
-            xText.setText("X: " + String.format("%.2f", x));
-            yText.setText("Y: " + String.format("%.2f", y));
-            zText.setText("Z: " + String.format("%.2f", z));
-            directionText.setText("Direction: " + direction);
-            exceptionText.setText("Forward: " + moveForward + " Right: " + moveRight);
-
-            aveX = 0; aveY = 0; aveZ = 0;
-            noReads = 0;
-            oldTime = newTime;
-
-            try {
-                makeRequest(moveForward, moveRight);
-            }
-            catch (Exception exception) {
-                //exceptionText.setText("Here:" + exception.getMessage());
-            }
-        //}
+        try {
+            makeRequest(moveForward, moveRight);
+        }
+        catch (Exception exception) {
+            //exceptionText.setText("Here:" + exception.getMessage());
+        }
     }
 
-    private void sendCommand() {
-
+    public void onClick(View v)
+    {
+        if (v == alarmButton) {
+            alarmOn = !alarmOn;
+        }
     }
 
     public String makeRequest(int moveForward, int moveRight) throws Exception {
@@ -154,8 +133,8 @@ public class MainActivity extends Activity implements SensorEventListener{
 
         Microcontroller micro = retrofit.create(Microcontroller.class);
 
-        if (moveForward == 0 && moveRight == 0)
-            micro.stop(
+        if (alarmOn) {
+            micro.alarm(
                     "1",
                     new Callback<Response>() {
                         @Override
@@ -179,115 +158,142 @@ public class MainActivity extends Activity implements SensorEventListener{
                         }
                     }
             );
+        }
+        else {
+            if (moveForward == 0 && moveRight == 0)
+                micro.stop(
+                        "1",
+                        new Callback<Response>() {
+                            @Override
+                            public void success(Response result, Response response) {
+                                BufferedReader reader = null;
+                                String output = "";
 
+                                try {
+                                    reader = new BufferedReader(new InputStreamReader(result.getBody().in()));
+                                    output = reader.readLine();
+                                } catch (IOException e) {
+                                    e.printStackTrace();
+                                }
 
-        if (moveForward == 1)
-            micro.forward (
-                    "1",
-                    new Callback<Response>() {
-                        @Override
-                        public void success(Response result, Response response) {
-                            BufferedReader reader = null;
-                            String output = "";
-
-                            try {
-                                reader = new BufferedReader(new InputStreamReader(result.getBody().in()));
-                                output = reader.readLine();
-                            } catch (IOException e) {
-                                e.printStackTrace();
+                                Toast.makeText(MainActivity.this, output, Toast.LENGTH_LONG).show();
                             }
 
-                            Toast.makeText(MainActivity.this, output, Toast.LENGTH_LONG).show();
+                            @Override
+                            public void failure(RetrofitError error) {
+                                Toast.makeText(MainActivity.this, error.toString(), Toast.LENGTH_LONG).show();
+                            }
                         }
-
-                        @Override
-                        public void failure(RetrofitError error) {
-                            Toast.makeText(MainActivity.this, error.toString(),Toast.LENGTH_LONG).show();
-                        }
-                    }
-            );
+                );
 
 
-        if (moveForward == -1)
-            micro.back (
-                    "1",
-                    new Callback<Response>() {
-                        @Override
-                        public void success(Response result, Response response) {
-                            BufferedReader reader = null;
-                            String output = "";
+            if (moveForward == 1)
+                micro.forward (
+                        "1",
+                        new Callback<Response>() {
+                            @Override
+                            public void success(Response result, Response response) {
+                                BufferedReader reader = null;
+                                String output = "";
 
-                            try {
-                                reader = new BufferedReader(new InputStreamReader(result.getBody().in()));
-                                output = reader.readLine();
-                            } catch (IOException e) {
-                                e.printStackTrace();
+                                try {
+                                    reader = new BufferedReader(new InputStreamReader(result.getBody().in()));
+                                    output = reader.readLine();
+                                } catch (IOException e) {
+                                    e.printStackTrace();
+                                }
+
+                                Toast.makeText(MainActivity.this, output, Toast.LENGTH_LONG).show();
                             }
 
-                            Toast.makeText(MainActivity.this, output, Toast.LENGTH_LONG).show();
+                            @Override
+                            public void failure(RetrofitError error) {
+                                Toast.makeText(MainActivity.this, error.toString(),Toast.LENGTH_LONG).show();
+                            }
                         }
-
-                        @Override
-                        public void failure(RetrofitError error) {
-                            Toast.makeText(MainActivity.this, error.toString(),Toast.LENGTH_LONG).show();
-                        }
-                    }
-            );
+                );
 
 
-        if (moveRight == 1)
-            micro.right (
-                    "1",
-                    new Callback<Response>() {
-                        @Override
-                        public void success(Response result, Response response) {
-                            BufferedReader reader = null;
-                            String output = "";
+            if (moveForward == -1)
+                micro.back (
+                        "1",
+                        new Callback<Response>() {
+                            @Override
+                            public void success(Response result, Response response) {
+                                BufferedReader reader = null;
+                                String output = "";
 
-                            try {
-                                reader = new BufferedReader(new InputStreamReader(result.getBody().in()));
-                                output = reader.readLine();
-                            } catch (IOException e) {
-                                e.printStackTrace();
+                                try {
+                                    reader = new BufferedReader(new InputStreamReader(result.getBody().in()));
+                                    output = reader.readLine();
+                                } catch (IOException e) {
+                                    e.printStackTrace();
+                                }
+
+                                Toast.makeText(MainActivity.this, output, Toast.LENGTH_LONG).show();
                             }
 
-                            Toast.makeText(MainActivity.this, output, Toast.LENGTH_LONG).show();
+                            @Override
+                            public void failure(RetrofitError error) {
+                                Toast.makeText(MainActivity.this, error.toString(),Toast.LENGTH_LONG).show();
+                            }
                         }
-
-                        @Override
-                        public void failure(RetrofitError error) {
-                            Toast.makeText(MainActivity.this, error.toString(),Toast.LENGTH_LONG).show();
-                        }
-                    }
-            );
+                );
 
 
-        if (moveRight == -1)
-            micro.left (
-                    "1",
-                    new Callback<Response>() {
-                        @Override
-                        public void success(Response result, Response response) {
-                            BufferedReader reader = null;
-                            String output = "";
+            if (moveRight == 1)
+                micro.right (
+                        "1",
+                        new Callback<Response>() {
+                            @Override
+                            public void success(Response result, Response response) {
+                                BufferedReader reader = null;
+                                String output = "";
 
-                            try {
-                                reader = new BufferedReader(new InputStreamReader(result.getBody().in()));
-                                output = reader.readLine();
-                            } catch (IOException e) {
-                                e.printStackTrace();
+                                try {
+                                    reader = new BufferedReader(new InputStreamReader(result.getBody().in()));
+                                    output = reader.readLine();
+                                } catch (IOException e) {
+                                    e.printStackTrace();
+                                }
+
+                                Toast.makeText(MainActivity.this, output, Toast.LENGTH_LONG).show();
                             }
 
-                            Toast.makeText(MainActivity.this, output, Toast.LENGTH_LONG).show();
+                            @Override
+                            public void failure(RetrofitError error) {
+                                Toast.makeText(MainActivity.this, error.toString(),Toast.LENGTH_LONG).show();
+                            }
                         }
+                );
 
-                        @Override
-                        public void failure(RetrofitError error) {
-                            Toast.makeText(MainActivity.this, error.toString(),Toast.LENGTH_LONG).show();
+
+            if (moveRight == -1)
+                micro.left (
+                        "1",
+                        new Callback<Response>() {
+                            @Override
+                            public void success(Response result, Response response) {
+                                BufferedReader reader = null;
+                                String output = "";
+
+                                try {
+                                    reader = new BufferedReader(new InputStreamReader(result.getBody().in()));
+                                    output = reader.readLine();
+                                } catch (IOException e) {
+                                    e.printStackTrace();
+                                }
+
+                                Toast.makeText(MainActivity.this, output, Toast.LENGTH_LONG).show();
+                            }
+
+                            @Override
+                            public void failure(RetrofitError error) {
+                                Toast.makeText(MainActivity.this, error.toString(),Toast.LENGTH_LONG).show();
+                            }
                         }
-                    }
-            );
-
+                );
+        }
 
         return "Here I got";
     }
