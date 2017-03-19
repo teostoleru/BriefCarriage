@@ -44,7 +44,7 @@ public class MainActivity extends Activity implements SensorEventListener{
         SM = (SensorManager)getSystemService(SENSOR_SERVICE);
 
         // Accelerometer Sensor
-        mySensor = SM.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        mySensor = SM.getDefaultSensor(Sensor.TYPE_GRAVITY);
 
         // Register sensor Listener
         SM.registerListener(this, mySensor, SensorManager.SENSOR_DELAY_NORMAL);
@@ -73,71 +73,65 @@ public class MainActivity extends Activity implements SensorEventListener{
     public void onSensorChanged(SensorEvent event) {
         long newTime = System.currentTimeMillis();
 
-        if (newTime - oldTime < timeThreshold){
+        /*if (newTime - oldTime < timeThreshold){
             aveX += event.values[0];
             aveY += event.values[1];
             aveZ += event.values[2];
             noReads++;
         }
 
-        else {
-            double newX = aveX / noReads;
-            double newY = aveY / noReads;
-            double newZ = aveZ / noReads;
+        else {*/
+            double newX = event.values[0];
+            double newY = event.values[1];
+            double newZ = event.values[2];
 
-            double threshold = 0.1;
-            double referenceForward = 0.5;
-            double referenceRight = 0.5;
+            double threshold = 3.0;
+            double referenceForward = 0.0;
+            double referenceRight = 0.0;
             String direction = "";
 
             double deltaX = x - newX;
             double deltaY = y - newY;
             double deltaZ = z - newZ;
 
-            double newVelocityX = oldVelocityX + x * (newTime - oldTime) / 1000;
-            double newVelocityZ = oldVelocityZ + z * (newTime - oldTime) / 1000;
-
             x = newX; y = newY; z = newZ;
 
             int moveForward, moveRight;
 
-            if (newVelocityX > referenceRight + threshold) {
+            if (x < referenceRight - threshold) {
                 direction += "Right ";
                 moveRight = 1;
             }
             else moveRight = 0;
 
-            if (newVelocityX < referenceForward - threshold) {
+            if (x > referenceRight + threshold) {
                 direction += "Left ";
                 moveRight = -1;
             }
 
-            if (newVelocityZ < referenceForward + threshold) {
+            if (z > referenceForward + threshold) {
                 direction += "Forward ";
                 moveForward = 1;
             }
             else moveForward = 0;
 
-            if (newVelocityZ > referenceForward - threshold) {
+            if (z < referenceForward - threshold) {
                 direction += "Back ";
                 moveForward = -1;
             }
 
-            if (Math.abs(deltaX) < threshold && Math.abs(deltaY) < threshold)
+            if (moveForward == 0 && moveRight == 0)
                 direction = "No movement";
 
             xText.setText("X: " + String.format("%.2f", x));
             yText.setText("Y: " + String.format("%.2f", y));
             zText.setText("Z: " + String.format("%.2f", z));
             directionText.setText("Direction: " + direction);
-            exceptionText.setText("Forward: " + newVelocityZ + " Right: " + newVelocityX);
+            exceptionText.setText("Forward: " + moveForward + " Right: " + moveRight);
 
             aveX = 0; aveY = 0; aveZ = 0;
             noReads = 0;
             oldTime = newTime;
-
-            oldVelocityX = newVelocityX;
-            oldVelocityZ = newVelocityZ;
 
             try {
                 makeRequest(moveForward, moveRight);
@@ -145,7 +139,7 @@ public class MainActivity extends Activity implements SensorEventListener{
             catch (Exception exception) {
                 //exceptionText.setText("Here:" + exception.getMessage());
             }
-        }
+        //}
     }
 
     private void sendCommand() {
