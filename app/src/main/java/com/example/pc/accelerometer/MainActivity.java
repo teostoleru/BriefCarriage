@@ -90,13 +90,13 @@ public class MainActivity extends Activity implements SensorEventListener, View.
             moveRight = -1;
         }
 
-        if (y > referenceForward + threshold) {
+        if (y < referenceForward - threshold / 2) {
             direction += "Forward ";
             moveForward = 1;
         }
         else moveForward = 0;
 
-        if (y < referenceForward - threshold) {
+        if (y > referenceForward + threshold) {
             direction += "Back ";
             moveForward = -1;
         }
